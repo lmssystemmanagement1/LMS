@@ -1,0 +1,50 @@
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+body { background-color: #f4f7f6; color: #333; }
+
+.login-section { display: flex; justify-content: center; align-items: center; height: 100vh; background: linear-gradient(135deg, #2c3e50, #34495e); }
+.login-box { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); width: 350px; }
+.login-box h2 { color: #2c3e50; margin-bottom: 20px; text-align: center; font-size: 18px; }
+
+.navbar { background-color: #2c3e50; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+.logo { font-size: 18px; font-weight: bold; }
+.btn-logout { background: #e74c3c; border: none; color: white; padding: 6px 12px; cursor: pointer; border-radius: 4px; font-weight: 600; }
+
+.container { max-width: 1200px; margin: 30px auto; padding: 0 20px; }
+.welcome-banner { background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 20px 25px; border-radius: 8px; margin-bottom: 25px; }
+.main-banner { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
+.card { background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); border-left: 4px solid #3498db; }
+.card h3 { font-size: 12px; color: #7f8c8d; margin-bottom: 6px; }
+.card p { font-size: 18px; font-weight: bold; color: #2c3e50; }
+
+.panel { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+.panel h3 { margin-bottom: 15px; color: #2c3e50; font-size: 16px; border-bottom: 2px solid #f1f1f1; padding-bottom: 8px; }
+
+.barangay-chips { display: flex; gap: 10px; flex-wrap: wrap; }
+.chip { background: #3498db; color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer; font-size: 13px; font-weight: 600; }
+.chip:hover { background: #2980b9; }
+
+.data-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.data-table th, .data-table td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; font-size: 13px; }
+.data-table th { background: #f8f9fa; }
+
+button { background: #27ae60; color: white; border: none; padding: 8px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 600; }
+button:hover { opacity: 0.9; }
+.btn-secondary { background: #2980b9; }
+.btn-primary { background: #27ae60; }
+.btn-full { width: 100%; padding: 10px; margin-top: 10px; font-size: 14px; }
+
+.modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+.modal-content { background-color: white; margin: 5% auto; padding: 25px; border-radius: 8px; width: 400px; max-height: 90vh; overflow-y: auto; }
+.wide-modal { width: 480px !important; }
+.close { color: #aaa; float: right; font-size: 24px; font-weight: bold; cursor: pointer; }
+.close:hover { color: black; }
+
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 13px; margin-bottom: 4px; font-weight: 600; }
+.form-group input, .form-group select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+.calculation-box { background: #f8f9fa; border: 1px solid #e9ecef; padding: 12px; border-radius: 6px; margin: 15px 0; font-size: 13px; }
+.calculation-box p { margin-bottom: 4px; display: flex; justify-content: space-between; }
+
