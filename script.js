@@ -1,341 +1,236 @@
-// LocalStorage Database initialization (Zero demo data state)
-let db = {
-    officers: [
-        { username: "officer_juan", name: "Juan Santos", barangays: ["Brgy. 1", "Brgy. 2"] }
-    ],
-    centers: [
-        { id: "C-01", name: "Center Alpha", barangay: "Brgy. 1" },
-        { id: "C-02", name: "Center Beta", barangay: "Brgy. 2" }
-    ],
-    clients: [],
-    loans: [],
-    savings: [], // stores { clientId, cbu, lcbu }
-    transactions: [],
-    auditLogs: []
-};
+const SUPABASE_URL = 'https://evxdalxwavcbudampzqu.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_gKbvXT1EWnBIN6zu1-NlsQ_9acw0vId';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Load saved data if available
-if(localStorage.getItem('lms_db')) {
-    db = JSON.parse(localStorage.getItem('lms_db'));
-} else {
-    saveDB();
-}
+let currentUserEmail = '';
 
-function saveDB() {
-    localStorage.setItem('lms_db', JSON.stringify(db));
-}
+document.addEventListener('DOMContentLoaded', async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    handleSession(session);
 
-let loggedUser = null;
-let selectedBarangay = null;
-let selectedCenter = null;
-let activeClient = null;
+    supabase.auth.onAuthStateChange((_event, session) => {
+        handleSession(session);
+    });
 
-function handleLogin() {
-    const user = document.getElementById('login-username').value.trim();
-    const pass = document.getElementById('login-password').value.trim();
+    // Navigation Tabs
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.style.display = 'none');
+            e.target.classList.add('active');
+            const tabId = e.target.getAttribute('data-tab');
+            document.getElementById(`tab-${tabId}`).style.display = 'block';
+            loadTabData(tabId);
+        });
+    });
 
-    if(!user || !pass) {
-        alert("Mangyaring ilagay ang username at password.");
-        return;
-    }
+    // Login Handler
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('login-email').value;
+        const password = document.getElementById('login-password').value;
+        const errDiv = document.getElementById('login-error');
+        errDiv.style.display = 'none';
 
-    if(user === 'admin' && pass === 'admin') {
-        loggedUser = { role: 'main', name: 'Main Owner' };
-        initMainDashboard();
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) {
+            errDiv.textContent = error.message;
+            errDiv.style.display = 'block';
+        }
+    });
+
+    // Logout Handler
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+        await supabase.auth.signOut();
+    });
+});
+
+function handleSession(session) {
+    if (session) {
+        currentUserEmail = session.user.email;
+        document.getElementById('login-view').style.display = 'none';
+        document.getElementById('app-view').style.display = 'flex';
+        loadTabData('dashboard');
     } else {
-        const foundOfficer = db.officers.find(o => o.username === user);
-        if(foundOfficer && pass === 'admin') { // default sample password check or hashed verification simulation
-            loggedUser = { role: 'officer', ...foundOfficer };
-            initOfficerDashboard();
-        } else {
-            alert("Maling kredensyal o walang rehistradong account.");
-            return;
-        }
+        currentUserEmail = '';
+        document.getElementById('login-view').style.display = 'flex';
+        document.getElementById('app-view').style.display = 'none';
+    }
+}
+
+async function loadTabData(tabId) {
+    if (tabId === 'dashboard') {
+        fetchMetrics();
+    } else if (['centers', 'barangays', 'officers', 'clients', 'loans', 'transactions', 'audit'].includes(tabId)) {
+        fetchTableData(tabId);
+    }
+}
+
+async function fetchMetrics() {
+    try {
+        const [
+            { count: c }, { count: b }, { count: o }, { count: cl },
+            { count: ac }, { count: pe }, { count: ov }, { data: loansData }
+        ] = await Promise.all([
+            supabase.from('centers').select('*', { count: 'exact', head: true }),
+            supabase.from('barangays').select('*', { count: 'exact', head: true }),
+            supabase.from('officers').select('*', { count: 'exact', head: true }),
+            supabase.from('clients').select('*', { count: 'exact', head: true }),
+            supabase.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
+            supabase.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'PENDING'),
+            supabase.from('loans').select('*', { count: 'exact', head: true }).eq('status', 'OVERDUE'),
+            supabase.from('loans').select('outstanding_balance')
+        ]);
+
+        let totalBal = 0;
+        loansData?.forEach(l => totalBal += Number(l.outstanding_balance || 0));
+
+        document.getElementById('m-centers').textContent = c || 0;
+        document.getElementById('m-barangays').textContent = b || 0;
+        document.getElementById('m-officers').textContent = o || 0;
+        document.getElementById('m-clients').textContent = cl || 0;
+        document.getElementById('m-active-loans').textContent = ac || 0;
+        document.getElementById('m-pending').textContent = pe || 0;
+        document.getElementById('m-overdue').textContent = ov || 0;
+        document.getElementById('m-balance').textContent = `₱ ${totalBal.toLocaleString()}`;
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+async function fetchTableData(tableName) {
+    const container = document.getElementById(`table-${tableName}`);
+    container.innerHTML = '<p style="padding:20px;text-align:center;">Loading...</p>';
+    
+    let query = supabase.from(tableName).select('*');
+    if (tableName === 'transactions' || tableName === 'audit') {
+        query = query.order('created_at', { ascending: false });
     }
 
-    document.getElementById('view-login').style.display = 'none';
-    document.getElementById('main-navbar').style.display = 'flex';
-    document.getElementById('main-container').style.display = 'block';
-    document.getElementById('logged-user-label').innerText = `Logged in as: ${loggedUser.name} (${loggedUser.role.toUpperCase()})`;
-    
-    logAudit(loggedUser.name, "Logged in to LMS");
-}
-
-function logout() {
-    if(loggedUser) logAudit(loggedUser.name, "Logged out");
-    loggedUser = null;
-    document.getElementById('view-login').style.display = 'flex';
-    document.getElementById('main-navbar').style.display = 'none';
-    document.getElementById('main-container').style.display = 'none';
-    document.getElementById('login-username').value = '';
-    document.getElementById('login-password').value = '';
-}
-
-// ================= MAIN DASHBOARD =================
-function initMainDashboard() {
-    document.getElementById('view-main').style.display = 'block';
-    document.getElementById('view-officer').style.display = 'none';
-
-    document.getElementById('m-centers').innerText = db.centers.length;
-    document.getElementById('m-barangays').innerText = [...new Set(db.centers.map(c => c.barangay))].length;
-    document.getElementById('m-officers').innerText = db.officers.length;
-    document.getElementById('m-clients').innerText = db.clients.length;
-    document.getElementById('m-active-loans').innerText = db.loans.filter(l => l.status === 'ACTIVE').length;
-    
-    const totalColl = db.transactions.reduce((acc, t) => acc + (t.type === 'PAYMENT' ? t.amount : 0), 0);
-    document.getElementById('m-collections').innerText = `₱${totalColl.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-
-    renderAuditLogs();
-}
-
-function renderAuditLogs() {
-    const tbody = document.getElementById('audit-log-tbody');
-    if(db.auditLogs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; color: #7f8c8d;">NO AUDIT LOGS</td></tr>`;
-        return;
-    }
-    tbody.innerHTML = db.auditLogs.map(log => `
-        <tr><td>${log.who}</td><td>${log.what}</td><td>${log.when}</td></tr>
-    `).join('');
-}
-
-function logAudit(who, what) {
-    db.auditLogs.unshift({ who, what, when: new Date().toLocaleString() });
-    saveDB();
-}
-
-// ================= OFFICER DASHBOARD =================
-function initOfficerDashboard() {
-    document.getElementById('view-main').style.display = 'none';
-    document.getElementById('view-officer').style.display = 'block';
-
-    document.getElementById('officer-welcome-title').innerText = `WELCOME, OFFICER ${loggedUser.name.toUpperCase()}`;
-    
-    const container = document.getElementById('officer-barangay-container');
-    if(loggedUser.barangays.length === 0) {
-        container.innerHTML = `<p style="color: #7f8c8d; font-style: italic;">NO BARANGAY ASSIGNED</p>`;
+    const { data, error } = await query;
+    if (error) {
+        container.innerHTML = `<p style="padding:20px;color:red;">Error: ${error.message}</p>`;
         return;
     }
 
-    container.innerHTML = loggedUser.barangays.map(b => `
-        <div class="chip" onclick="selectBarangay('${b}')">${b}</div>
-    `).join('');
-}
-
-function selectBarangay(brgy) {
-    selectedBarangay = brgy;
-    document.getElementById('center-section').style.display = 'block';
-    document.getElementById('selected-barangay-title').innerText = `Centers under ${brgy}`;
-    
-    const centers = db.centers.filter(c => c.barangay === brgy);
-    const container = document.getElementById('barangay-center-container');
-    
-    if(centers.length === 0) {
-        container.innerHTML = `<p style="color: #7f8c8d; font-style: italic;">NO CENTER FOUND</p>`;
-        document.getElementById('client-list-section').style.display = 'none';
+    if (!data || data.length === 0) {
+        container.innerHTML = '<div style="padding:30px;text-align:center;color:#6b7280;">NO DATA AVAILABLE</div>';
         return;
     }
 
-    container.innerHTML = centers.map(c => `
-        <button onclick="selectCenter('${c.id}')" class="btn-secondary" style="margin-right: 10px;">${c.name}</button>
-    `).join('');
+    const keys = Object.keys(data[0]);
+    let html = '<table><thead><tr>';
+    keys.forEach(k => html += `<th>${k.replace('_', ' ')}</th>`);
+    html += '</tr></thead><tbody>';
+
+    data.forEach(row => {
+        html += '<tr>';
+        keys.forEach(k => {
+            let val = row[k];
+            if (typeof val === 'object') val = JSON.stringify(val);
+            html += `<td>${val !== null ? val : '-'}</td>`;
+        });
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+    container.innerHTML = html;
 }
 
-function selectCenter(centerId) {
-    selectedCenter = db.centers.find(c => c.id === centerId);
-    document.getElementById('client-list-section').style.display = 'block';
-    document.getElementById('center-client-title').innerText = `Clients in ${selectedCenter.name} (${selectedCenter.barangay})`;
-    renderClients();
-}
+function openModal(type) {
+    const overlay = document.getElementById('modal-overlay');
+    const title = document.getElementById('modal-title');
+    const form = document.getElementById('dynamic-form');
+    title.textContent = `Add ${type}`;
+    overlay.style.display = 'flex';
 
-function renderClients() {
-    const tbody = document.getElementById('client-table-tbody');
-    const filtered = db.clients.filter(c => c.barangay === selectedBarangay);
-
-    if(filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #7f8c8d;">NO CLIENTS FOUND</td></tr>`;
-        return;
+    let html = '';
+    if (type === 'center') {
+        html = `<input type="text" id="f-name" placeholder="Center Name" required>
+                <input type="text" id="f-loc" placeholder="Location" required>`;
+    } else if (type === 'barangay') {
+        html = `<input type="text" id="f-bname" placeholder="Barangay Name" required>
+                <input type="text" id="f-cid" placeholder="Center ID" required>`;
+    } else if (type === 'officer') {
+        html = `<input type="text" id="f-oname" placeholder="Full Name" required>
+                <input type="text" id="f-ocont" placeholder="Contact Number" required>
+                <input type="text" id="f-ouser" placeholder="Username" required>
+                <input type="password" id="f-opass" placeholder="Password" required>`;
+    } else if (type === 'client') {
+        html = `<input type="text" id="f-cname" placeholder="Full Name" required>
+                <input type="text" id="f-ccont" placeholder="Contact Number" required>
+                <input type="text" id="f-caddr" placeholder="Address" required>
+                <input type="text" id="f-cbrgy" placeholder="Barangay" required>`;
+    } else if (type === 'loan') {
+        html = `<input type="text" id="f-lclient" placeholder="Client ID (UUID)" required>
+                <input type="number" id="f-lamt" placeholder="Loan Amount" required>`;
+    } else if (type === 'payment') {
+        html = `<select id="f-ptype" required>
+                    <option value="">Select Transaction Type</option>
+                    <option value="LOAN_PAYMENT">Loan Payment</option>
+                    <option value="SAVINGS_DEPOSIT">Savings Deposit</option>
+                    <option value="SAVINGS_WITHDRAWAL">Savings Withdrawal</option>
+                </select>
+                <input type="number" id="f-pamt" placeholder="Amount (₱)" required>`;
     }
 
-    tbody.innerHTML = filtered.map(c => `
-        <tr>
-            <td>${c.id}</td>
-            <td>${c.name}</td>
-            <td>${c.contact}</td>
-            <td><button onclick="openClientProfile('${c.id}')">View Profile</button></td>
-        </tr>
-    `).join('');
-}
+    html += `<div style="display:flex;gap:10px;margin-top:20px;">
+                <button type="submit" style="flex:1;background:#2563eb;">Save</button>
+                <button type="button" onclick="closeModal()" style="flex:1;background:#6b7280;">Cancel</button>
+             </div>`;
+    form.innerHTML = html;
 
-// ================= CLIENT MANAGEMENT & PROFILE =================
-function saveNewClient() {
-    const name = document.getElementById('ac-name').value.trim();
-    const contact = document.getElementById('ac-contact').value.trim();
-    const address = document.getElementById('ac-address').value.trim();
-
-    if(!name) { alert("Ilagay ang pangalan ng kliyente."); return; }
-
-    const newClient = {
-        id: 'CL-' + Math.floor(100000 + Math.random() * 900000),
-        name, contact, address,
-        barangay: selectedBarangay,
-        center: selectedCenter ? selectedCenter.name : 'Unassigned',
-        officer: loggedUser.name
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        await handleFormSubmit(type);
     };
-
-    db.clients.push(newClient);
-    db.savings.push({ clientId: newClient.id, cbu: 0, lcbu: 0 });
-    saveDB();
-    logAudit(loggedUser.name, `Created client ${name} (${newClient.id})`);
-
-    closeModal('addClientModal');
-    renderClients();
-    alert("Kliyente ay matagumpay na naidagdag!");
 }
 
-function openClientProfile(clientId) {
-    activeClient = db.clients.find(c => c.id === clientId);
-    
-    document.getElementById('client-list-section').style.display = 'none';
-    document.getElementById('center-section').style.display = 'none';
-    document.getElementById('client-profile-section').style.display = 'block';
-
-    document.getElementById('cp-name').innerText = activeClient.name;
-    document.getElementById('cp-id').innerText = activeClient.id;
-    document.getElementById('cp-center').innerText = activeClient.center;
-    document.getElementById('cp-brgy').innerText = activeClient.barangay;
-
-    renderClientLoansAndSavings();
+function closeModal() {
+    document.getElementById('modal-overlay').style.display = 'none';
 }
 
-function backToClientList() {
-    activeClient = null;
-    document.getElementById('client-profile-section').style.display = 'none';
-    document.getElementById('center-section').style.display = 'block';
-    document.getElementById('client-list-section').style.display = 'block';
-}
+async function handleFormSubmit(type) {
+    try {
+        let payload = {};
+        let tableName = type;
 
-function renderClientLoansAndSavings() {
-    // Savings
-    const sav = db.savings.find(s => s.clientId === activeClient.id) || { cbu: 0, lcbu: 0 };
-    const totalSav = sav.cbu + sav.lcbu;
-    document.getElementById('cp-savings-bal').innerText = `₱${totalSav.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-
-    // Loans
-    const loans = db.loans.filter(l => l.clientId === activeClient.id);
-    const tbody = document.getElementById('cp-loans-tbody');
-
-    if(loans.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: #7f8c8d;">NO LOANS FOUND</td></tr>`;
-        return;
-    }
-
-    tbody.innerHTML = loans.map(l => `
-        <tr>
-            <td>${l.id}</td>
-            <td>${l.type}</td>
-            <td>₱${l.amount.toLocaleString()}</td>
-            <td>₱${l.totalPayable.toLocaleString()}</td>
-            <td>${l.status}</td>
-            <td>-</td>
-        </tr>
-    `).join('');
-}
-
-// ================= LOAN WORKFLOW =================
-function computeLoanPreview() {
-    const amt = parseFloat(document.getElementById('l-amount').value) || 0;
-    const markupRate = parseFloat(document.getElementById('l-markup').value) || 0;
-    const term = parseInt(document.getElementById('l-term').value) || 1;
-
-    const totalMarkup = amt * (markupRate / 100);
-    const totalPayable = amt + totalMarkup;
-    const weekly = term > 0 ? totalPayable / term : 0;
-
-    document.getElementById('calc-markup').innerText = `₱${totalMarkup.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-    document.getElementById('calc-payable').innerText = `₱${totalPayable.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-    document.getElementById('calc-weekly').innerText = `₱${weekly.toLocaleString('en-US', {minimumFractionDigits: 2})}`;
-}
-
-function submitNewLoan() {
-    const amt = parseFloat(document.getElementById('l-amount').value) || 0;
-    const markupRate = parseFloat(document.getElementById('l-markup').value) || 0;
-    const term = parseInt(document.getElementById('l-term').value) || 1;
-    const type = document.getElementById('l-type').value;
-    const purpose = document.getElementById('l-purpose').value;
-
-    if(amt <= 0) { alert("Maglagay ng wastong halaga."); return; }
-
-    const totalMarkup = amt * (markupRate / 100);
-    const totalPayable = amt + totalMarkup;
-
-    const newLoan = {
-        id: 'LN-' + Math.floor(100000 + Math.random() * 900000),
-        clientId: activeClient.id,
-        type, amount: amt, markupRate, totalMarkup, totalPayable, term, purpose,
-        status: 'ACTIVE' // Instant release simulation for quick workflow testing
-    };
-
-    db.loans.push(newLoan);
-    saveDB();
-    logAudit(loggedUser.name, `Released Loan ${newLoan.id} to ${activeClient.name}`);
-
-    closeModal('addLoanModal');
-    renderClientLoansAndSavings();
-    alert("Loan ay matagumpay na naisaproseso at na-release!");
-}
-
-// ================= TRANSACTION & PAYMENT =================
-function confirmClientTransaction() {
-    const loanPay = parseFloat(document.getElementById('pay-loan-amount').value) || 0;
-    const savAmt = parseFloat(document.getElementById('pay-savings-amount').value) || 0;
-    const type = document.getElementById('pay-trans-type').value;
-
-    if(loanPay <= 0 && savAmt <= 0) {
-        alert("Mangyaring maglagay ng halaga para sa Loan Payment o Savings.");
-        return;
-    }
-
-    let sav = db.savings.find(s => s.clientId === activeClient.id);
-    if(!sav) {
-        sav = { clientId: activeClient.id, cbu: 0, lcbu: 0 };
-        db.savings.push(sav);
-    }
-
-    if(type === 'WITHDRAW') {
-        const totalSav = sav.cbu + sav.lcbu;
-        if(savAmt > totalSav) {
-            alert("INSUFFICIENT SAVINGS BALANCE");
-            return;
+        if (type === 'center') {
+            payload = { center_name: document.getElementById('f-name').value, location: document.getElementById('f-loc').value };
+        } else if (type === 'barangay') {
+            tableName = 'barangays';
+            payload = { barangay_name: document.getElementById('f-bname').value, center_id: document.getElementById('f-cid').value };
+        } else if (type === 'officer') {
+            tableName = 'officers';
+            payload = { full_name: document.getElementById('f-oname').value, contact_number: document.getElementById('f-ocont').value, username: document.getElementById('f-ouser').value, password: document.getElementById('f-opass').value };
+        } else if (type === 'client') {
+            tableName = 'clients';
+            payload = { full_name: document.getElementById('f-cname').value, contact_number: document.getElementById('f-ccont').value, address: document.getElementById('f-caddr').value, barangay: document.getElementById('f-cbrgy').value };
+        } else if (type === 'loan') {
+            tableName = 'loans';
+            const amt = Number(document.getElementById('f-lamt').value);
+            payload = { client_id: document.getElementById('f-lclient').value, loan_amount: amt, total_payable: amt * 1.2, outstanding_balance: amt * 1.2, status: 'PENDING' };
+        } else if (type === 'payment') {
+            tableName = 'transactions';
+            payload = { type: document.getElementById('f-ptype').value, amount: Number(document.getElementById('f-pamt').value) };
         }
-        sav.cbu -= savAmt; // Deduct from CBU
-        logAudit(loggedUser.name, `Withdrawal of ₱${savAmt} for ${activeClient.name}`);
-    } else {
-        if(savAmt > 0) {
-            sav.cbu += savAmt; // Add to CBU deposit
-            logAudit(loggedUser.name, `Savings Deposit of ₱${savAmt} for ${activeClient.name}`);
-        }
-        if(loanPay > 0) {
-            db.transactions.push({
-                id: 'TXN-' + Math.floor(100000 + Math.random() * 900000),
-                clientId: activeClient.id,
-                type: 'PAYMENT',
-                amount: loanPay,
-                date: new Date().toLocaleString()
-            });
-            logAudit(loggedUser.name, `Loan Payment of ₱${loanPay} recorded for ${activeClient.name}`);
-        }
-    }
 
-    saveDB();
-    renderClientLoansAndSavings();
-    
-    // Clear inputs
-    document.getElementById('pay-loan-amount').value = '';
-    document.getElementById('pay-savings-amount').value = '';
-    alert("Transaksiyon ay matagumpay na naitala!");
+        const { error } = await supabase.from(tableName).insert([payload]);
+        if (error) throw error;
+
+        await supabase.from('audit_logs').insert([{ action: `CREATE_${type.toUpperCase()}`, details: `Created new ${type}`, user_email: currentUserEmail }]);
+
+        closeModal();
+        showAlert('Successfully saved to Supabase!', 'success');
+        loadTabData('dashboard');
+    } catch (err) {
+        showAlert(err.message, 'error');
+    }
 }
 
-// Modal helpers
-function openModal(id) { document.getElementById(id).style.display = 'block'; }
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+function showAlert(msg, type) {
+    const box = document.getElementById('alert-box');
+    box.textContent = msg;
+    box.className = `alert ${type}`;
+    box.style.display = 'block';
+    setTimeout(() => { box.style.display = 'none'; }, 4000);
+}
