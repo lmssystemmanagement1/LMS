@@ -1,72 +1,51 @@
-// Malinis na Supabase Client Initialization
-const SUPABASE_URL = 'https://evxdalxwavcbudampzqu.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE'; // Ilagay ang tamang anon key dito
-
-// Siguraduhing iisa lang ang instance ng client
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
     const loginView = document.getElementById('login-view');
     const appView = document.getElementById('app-view');
     const loginForm = document.getElementById('login-form');
     const loginError = document.getElementById('login-error');
     const logoutBtn = document.getElementById('logout-btn');
 
-    // Suriin kung may active session na
-    const { data: { session } } = await supabase.auth.getSession();
-    updateView(session);
+    // Suriin kung naka-login na dati sa pamamagitan ng localStorage
+    const isLoggedIn = localStorage.getItem('lms_logged_in');
+    if (isLoggedIn === 'true') {
+        showDashboard();
+    }
 
-    // Makinig sa pagbabago ng auth state
-    supabase.auth.onAuthStateChange((event, session) => {
-        updateView(session);
-    });
-
-    // Login Form Event Listener
+    // Login Handler
     if (loginForm) {
-        loginForm.addEventListener('submit', async (e) => {
+        loginForm.addEventListener('submit', (e) => {
             e.preventDefault();
-            if (loginError) {
-                loginError.style.display = 'none';
-                loginError.textContent = '';
-            }
-
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-password').value;
 
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email: email,
-                password: password
-            });
-
-            if (error) {
+            // Simplified Mock Authentication (Gumagana sa anumang email basta may laman)
+            if (email && password) {
+                localStorage.setItem('lms_logged_in', 'true');
+                showDashboard();
+            } else {
                 if (loginError) {
                     loginError.style.display = 'block';
-                    loginError.textContent = error.message;
+                    loginError.textContent = 'Mangyaring ilagay ang email at password.';
                 }
-                return;
             }
         });
     }
 
-    // Logout Event Listener
+    // Logout Handler
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', async () => {
-            await supabase.auth.signOut();
+        logoutBtn.addEventListener('click', () => {
+            localStorage.removeItem('lms_logged_in');
+            if (loginView) loginView.style.display = 'flex';
+            if (appView) appView.style.display = 'none';
         });
     }
 
-    function updateView(session) {
-        if (session) {
-            if (loginView) loginView.style.display = 'none';
-            if (appView) appView.style.display = 'flex';
-            loadDashboardData();
-        } else {
-            if (loginView) loginView.style.display = 'flex';
-            if (appView) appView.style.display = 'none';
-        }
+    function showDashboard() {
+        if (loginView) loginView.style.display = 'none';
+        if (appView) appView.style.display = 'flex';
     }
 
-    // Navigation para sa mga tabs
+    // Navigation Logic para sa Tabs
     const navButtons = document.querySelectorAll('.nav-btn');
     navButtons.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -78,90 +57,64 @@ document.addEventListener('DOMContentLoaded', async () => {
                 section.style.display = 'none';
             });
 
-            const target = document.getElementById(`tab-${tabName}`);
-            if (target) {
-                target.style.display = 'block';
-                loadTabData(tabName);
+            const targetSection = document.getElementById(`tab-${tabName}`);
+            if (targetSection) {
+                targetSection.style.display = 'block';
+                loadMockTableData(tabName);
             }
         });
     });
 });
 
-async function loadDashboardData() {
-    try {
-        const { count: cCount } = await supabase.from('centers').select('*', { count: 'exact', head: true });
-        const { count: bCount } = await supabase.from('barangays').select('*', { count: 'exact', head: true });
-        const { count: oCount } = await supabase.from('officers').select('*', { count: 'exact', head: true });
-        const { count: clCount } = await supabase.from('clients').select('*', { count: 'exact', head: true });
-        const { count: lCount } = await supabase.from('loans').select('*', { count: 'exact', head: true });
+// Sample Mock Data para sa mga tab para makita mo agad kung paano lumalabas ang tables
+function loadMockTableData(tabName) {
+    if (tabName === 'dashboard') return;
 
-        if (document.getElementById('m-centers')) document.getElementById('m-centers').textContent = cCount || 0;
-        if (document.getElementById('m-barangays')) document.getElementById('m-barangays').textContent = bCount || 0;
-        if (document.getElementById('m-officers')) document.getElementById('m-officers').textContent = oCount || 0;
-        if (document.getElementById('m-clients')) document.getElementById('m-clients').textContent = clCount || 0;
-        if (document.getElementById('m-active-loans')) document.getElementById('m-active-loans').textContent = lCount || 0;
-    } catch (err) {
-        console.error('Error fetching metrics:', err);
+    const tableContainer = document.getElementById(`table-${tabName}`);
+    if (!tableContainer) return;
+
+    // Halimbawa ng mock data depende sa piniling tab
+    let sampleData = [];
+    if (tabName === 'centers') {
+        sampleData = [{ id: 1, center_name: 'Center A - Zone 1', leader: 'Maria Santos' }, { id: 2, center_name: 'Center B - Zone 2', leader: 'Juan Dela Cruz' }];
+    } else if (tabName === 'clients') {
+        sampleData = [{ id: 1, name: 'Ana Reyes', contact: '09123456789', status: 'Active' }, { id: 2, name: 'Pedro Penduko', contact: '09987654321', status: 'Pending' }];
+    } else {
+        sampleData = [{ message: `Walang paunang tala para sa ${tabName}.` }];
     }
+
+    let html = '<table><thead><tr>';
+    const keys = Object.keys(sampleData[0]);
+    keys.forEach(key => { html += `<th>${key}</th>`; });
+    html += '</tr></thead><tbody>';
+
+    sampleData.forEach(row => {
+        html += '<tr>';
+        keys.forEach(key => { html += `<td>${row[key]}</td>`; });
+        html += '</tr>';
+    });
+    html += '</tbody></table>';
+
+    tableContainer.innerHTML = html;
 }
 
-async function loadTabData(tabName) {
-    if (tabName === 'dashboard') {
-        loadDashboardData();
-        return;
-    }
-
-    const container = document.getElementById(`table-${tabName}`);
-    if (!container) return;
-
-    container.innerHTML = '<p style="padding: 20px;">Naglo-load ng data...</p>';
-
-    try {
-        const { data, error } = await supabase.from(tabName).select('*');
-        if (error) {
-            container.innerHTML = `<p style="padding: 20px; color: red;">Error: ${error.message}</p>`;
-            return;
-        }
-
-        if (!data || data.length === 0) {
-            container.innerHTML = '<p style="padding: 20px;">Walang nakitang tala.</p>';
-            return;
-        }
-
-        let html = '<table><thead><tr>';
-        const keys = Object.keys(data[0]);
-        keys.forEach(k => html += `<th>${k}</th>`);
-        html += '</tr></thead><tbody>';
-
-        data.forEach(row => {
-            html += '<tr>';
-            keys.forEach(k => html += `<td>${row[k] !== null ? row[k] : ''}</td>`);
-            html += '</tr>';
-        });
-        html += '</tbody></table>';
-
-        container.innerHTML = html;
-    } catch (err) {
-        container.innerHTML = '<p style="padding: 20px; color: red;">Nabigo sa pagkarga ng data.</p>';
-    }
-}
-
+// Modal Handlers
 function openModal(type) {
-    const overlay = document.getElementById('modal-overlay');
-    const title = document.getElementById('modal-title');
-    const form = document.getElementById('dynamic-form');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalTitle = document.getElementById('modal-title');
+    const dynamicForm = document.getElementById('dynamic-form');
 
-    if (title) title.textContent = `Magdagdag ng ${type}`;
-    if (overlay) overlay.style.display = 'flex';
-    if (form) {
-        form.innerHTML = `
-            <p style="margin-bottom: 15px; font-size: 14px;">Form para sa ${type}.</p>
-            <button type="button" onclick="closeModal()" style="background: #6b7280;">Isara</button>
+    if (modalTitle) modalTitle.textContent = `Add New ${type}`;
+    if (modalOverlay) modalOverlay.style.display = 'flex';
+    if (dynamicForm) {
+        dynamicForm.innerHTML = `
+            <p style="margin-bottom: 15px; font-size: 14px;">Form para sa pagdaragdag ng ${type}.</p>
+            <button type="button" onclick="closeModal()" style="background: #6b7280; width:100%;">Isara</button>
         `;
     }
 }
 
 function closeModal() {
-    const overlay = document.getElementById('modal-overlay');
-    if (overlay) overlay.style.display = 'none';
+    const modalOverlay = document.getElementById('modal-overlay');
+    if (modalOverlay) modalOverlay.style.display = 'none';
 }
