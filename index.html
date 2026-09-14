@@ -1,12 +1,10 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loan Management System</title>
+    <title>Loan Management System (Offline Mode)</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <!-- LOGIN VIEW -->
@@ -15,9 +13,9 @@
             <h2>LMS Login</h2>
             <div id="login-error" class="error-msg" style="display:none;"></div>
             <label>Email Address</label>
-            <input type="email" id="login-email" required placeholder="admin@lms.internal">
+            <input type="email" id="login-email" required value="admin@lms.internal">
             <label>Password</label>
-            <input type="password" id="login-password" required placeholder="••••••••">
+            <input type="password" id="login-password" required value="password123">
             <button type="submit" id="login-btn">Sign In</button>
         </form>
     </div>
@@ -44,16 +42,16 @@
 
             <!-- TAB: DASHBOARD -->
             <section id="tab-dashboard" class="tab-content">
-                <h1>Main Dashboard</h1>
+                <h1>Main Dashboard (Offline)</h1>
                 <div class="metrics-grid">
-                    <div class="card"><p>Total Centers</p><h3 id="m-centers">0</h3></div>
-                    <div class="card"><p>Total Barangays</p><h3 id="m-barangays">0</h3></div>
-                    <div class="card"><p>Total Officers</p><h3 id="m-officers">0</h3></div>
-                    <div class="card"><p>Total Clients</p><h3 id="m-clients">0</h3></div>
-                    <div class="card"><p>Active Loans</p><h3 id="m-active-loans">0</h3></div>
-                    <div class="card"><p>Pending Applications</p><h3 id="m-pending">0</h3></div>
-                    <div class="card"><p>Overdue Loans</p><h3 id="m-overdue">0</h3></div>
-                    <div class="card"><p>Outstanding Balance</p><h3 id="m-balance">₱ 0</h3></div>
+                    <div class="card"><p>Total Centers</p><h3 id="m-centers">3</h3></div>
+                    <div class="card"><p>Total Barangays</p><h3 id="m-barangays">5</h3></div>
+                    <div class="card"><p>Total Officers</p><h3 id="m-officers">2</h3></div>
+                    <div class="card"><p>Total Clients</p><h3 id="m-clients">12</h3></div>
+                    <div class="card"><p>Active Loans</p><h3 id="m-active-loans">8</h3></div>
+                    <div class="card"><p>Pending Applications</p><h3 id="m-pending">2</h3></div>
+                    <div class="card"><p>Overdue Loans</p><h3 id="m-overdue">1</h3></div>
+                    <div class="card"><p>Outstanding Balance</p><h3 id="m-balance">₱ 45,000</h3></div>
                 </div>
                 <div class="actions-box">
                     <h3>Quick Actions</h3>
