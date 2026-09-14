@@ -1,7 +1,8 @@
-// 1. Supabase Initialization (Tiyaking iisa lamang ang declaration nito)
+// Malinis na Supabase Client Initialization
 const SUPABASE_URL = 'https://evxdalxwavcbudampzqu.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE'; // Ilagay ang tamang anon key dito
 
+// Siguraduhing iisa lang ang instance ng client
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -11,16 +12,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     const loginError = document.getElementById('login-error');
     const logoutBtn = document.getElementById('logout-btn');
 
-    // Check existing session on load
+    // Suriin kung may active session na
     const { data: { session } } = await supabase.auth.getSession();
-    handleAuthChange(session);
+    updateView(session);
 
-    // Listen for auth state changes
+    // Makinig sa pagbabago ng auth state
     supabase.auth.onAuthStateChange((event, session) => {
-        handleAuthChange(session);
+        updateView(session);
     });
 
-    // Login Form Submit Handler
+    // Login Form Event Listener
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -29,12 +30,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 loginError.textContent = '';
             }
 
-            const emailInput = document.getElementById('login-email').value;
-            const passwordInput = document.getElementById('login-password').value;
+            const email = document.getElementById('login-email').value;
+            const password = document.getElementById('login-password').value;
 
             const { data, error } = await supabase.auth.signInWithPassword({
-                email: emailInput,
-                password: passwordInput
+                email: email,
+                password: password
             });
 
             if (error) {
@@ -47,25 +48,25 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Logout Handler
+    // Logout Event Listener
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
             await supabase.auth.signOut();
         });
     }
 
-    function handleAuthChange(session) {
+    function updateView(session) {
         if (session) {
             if (loginView) loginView.style.display = 'none';
             if (appView) appView.style.display = 'flex';
-            loadDashboardMetrics();
+            loadDashboardData();
         } else {
             if (loginView) loginView.style.display = 'flex';
             if (appView) appView.style.display = 'none';
         }
     }
 
-    // Sidebar Tab Navigation Logic
+    // Navigation para sa mga tabs
     const navButtons = document.querySelectorAll('.nav-btn');
     navButtons.forEach(btn => {
         btn.addEventListener('click', () => {
@@ -77,100 +78,90 @@ document.addEventListener('DOMContentLoaded', async () => {
                 section.style.display = 'none';
             });
 
-            const targetSection = document.getElementById(`tab-${tabName}`);
-            if (targetSection) {
-                targetSection.style.display = 'block';
+            const target = document.getElementById(`tab-${tabName}`);
+            if (target) {
+                target.style.display = 'block';
                 loadTabData(tabName);
             }
         });
     });
 });
 
-// Load Dashboard Metrics Counts
-async function loadDashboardMetrics() {
+async function loadDashboardData() {
     try {
-        const { count: centersCount } = await supabase.from('centers').select('*', { count: 'exact', head: true });
-        const { count: barangaysCount } = await supabase.from('barangays').select('*', { count: 'exact', head: true });
-        const { count: officersCount } = await supabase.from('officers').select('*', { count: 'exact', head: true });
-        const { count: clientsCount } = await supabase.from('clients').select('*', { count: 'exact', head: true });
-        const { count: loansCount } = await supabase.from('loans').select('*', { count: 'exact', head: true });
+        const { count: cCount } = await supabase.from('centers').select('*', { count: 'exact', head: true });
+        const { count: bCount } = await supabase.from('barangays').select('*', { count: 'exact', head: true });
+        const { count: oCount } = await supabase.from('officers').select('*', { count: 'exact', head: true });
+        const { count: clCount } = await supabase.from('clients').select('*', { count: 'exact', head: true });
+        const { count: lCount } = await supabase.from('loans').select('*', { count: 'exact', head: true });
 
-        if (document.getElementById('m-centers')) document.getElementById('m-centers').textContent = centersCount || 0;
-        if (document.getElementById('m-barangays')) document.getElementById('m-barangays').textContent = barangaysCount || 0;
-        if (document.getElementById('m-officers')) document.getElementById('m-officers').textContent = officersCount || 0;
-        if (document.getElementById('m-clients')) document.getElementById('m-clients').textContent = clientsCount || 0;
-        if (document.getElementById('m-active-loans')) document.getElementById('m-active-loans').textContent = loansCount || 0;
+        if (document.getElementById('m-centers')) document.getElementById('m-centers').textContent = cCount || 0;
+        if (document.getElementById('m-barangays')) document.getElementById('m-barangays').textContent = bCount || 0;
+        if (document.getElementById('m-officers')) document.getElementById('m-officers').textContent = oCount || 0;
+        if (document.getElementById('m-clients')) document.getElementById('m-clients').textContent = clCount || 0;
+        if (document.getElementById('m-active-loans')) document.getElementById('m-active-loans').textContent = lCount || 0;
     } catch (err) {
-        console.error('Error loading metrics:', err);
+        console.error('Error fetching metrics:', err);
     }
 }
 
-// Dynamic Tab Data Loading (Tables)
 async function loadTabData(tabName) {
     if (tabName === 'dashboard') {
-        loadDashboardMetrics();
+        loadDashboardData();
         return;
     }
 
-    const tableContainer = document.getElementById(`table-${tabName}`);
-    if (!tableContainer) return;
+    const container = document.getElementById(`table-${tabName}`);
+    if (!container) return;
 
-    tableContainer.innerHTML = '<p style="padding: 20px;">Loading data...</p>';
+    container.innerHTML = '<p style="padding: 20px;">Naglo-load ng data...</p>';
 
     try {
         const { data, error } = await supabase.from(tabName).select('*');
-
         if (error) {
-            tableContainer.innerHTML = `<p style="padding: 20px; color: red;">Error: ${error.message}</p>`;
+            container.innerHTML = `<p style="padding: 20px; color: red;">Error: ${error.message}</p>`;
             return;
         }
 
         if (!data || data.length === 0) {
-            tableContainer.innerHTML = '<p style="padding: 20px;">No records found.</p>';
+            container.innerHTML = '<p style="padding: 20px;">Walang nakitang tala.</p>';
             return;
         }
 
         let html = '<table><thead><tr>';
         const keys = Object.keys(data[0]);
-        keys.forEach(key => {
-            html += `<th>${key}</th>`;
-        });
+        keys.forEach(k => html += `<th>${k}</th>`);
         html += '</tr></thead><tbody>';
 
         data.forEach(row => {
             html += '<tr>';
-            keys.forEach(key => {
-                html += `<td>${row[key] !== null ? row[key] : ''}</td>`;
-            });
+            keys.forEach(k => html += `<td>${row[k] !== null ? row[k] : ''}</td>`);
             html += '</tr>';
         });
         html += '</tbody></table>';
 
-        tableContainer.innerHTML = html;
+        container.innerHTML = html;
     } catch (err) {
-        console.error(`Error loading ${tabName}:`, err);
-        tableContainer.innerHTML = '<p style="padding: 20px; color: red;">Failed to load data.</p>';
+        container.innerHTML = '<p style="padding: 20px; color: red;">Nabigo sa pagkarga ng data.</p>';
     }
 }
 
-// Modal Form Handlers
 function openModal(type) {
-    const modalOverlay = document.getElementById('modal-overlay');
-    const modalTitle = document.getElementById('modal-title');
-    const dynamicForm = document.getElementById('dynamic-form');
+    const overlay = document.getElementById('modal-overlay');
+    const title = document.getElementById('modal-title');
+    const form = document.getElementById('dynamic-form');
 
-    if (modalTitle) modalTitle.textContent = `Add New ${type}`;
-    if (modalOverlay) modalOverlay.style.display = 'flex';
-
-    if (dynamicForm) {
-        dynamicForm.innerHTML = `
-            <p style="margin-bottom: 15px; font-size: 14px;">Form for ${type} goes here.</p>
-            <button type="button" onclick="closeModal()" style="background: #6b7280; margin-top: 10px;">Close</button>
+    if (title) title.textContent = `Magdagdag ng ${type}`;
+    if (overlay) overlay.style.display = 'flex';
+    if (form) {
+        form.innerHTML = `
+            <p style="margin-bottom: 15px; font-size: 14px;">Form para sa ${type}.</p>
+            <button type="button" onclick="closeModal()" style="background: #6b7280;">Isara</button>
         `;
     }
 }
 
 function closeModal() {
-    const modalOverlay = document.getElementById('modal-overlay');
-    if (modalOverlay) modalOverlay.style.display = 'none';
+    const overlay = document.getElementById('modal-overlay');
+    if (overlay) overlay.style.display = 'none';
 }
