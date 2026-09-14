@@ -3,34 +3,33 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loan Management System (Offline Mode)</title>
+    <title>Loan Management System (Offline LocalStorage)</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- LOGIN VIEW -->
     <div id="login-view" class="view-container">
         <form id="login-form" class="auth-box">
             <h2>LMS Login</h2>
             <div id="login-error" class="error-msg" style="display:none;"></div>
-            <label>Email Address</label>
-            <input type="email" id="login-email" required value="admin@lms.internal">
+            <label>Email / Username</label>
+            <input type="text" id="login-email" required placeholder="admin@lms.internal o officer@lms.internal">
             <label>Password</label>
-            <input type="password" id="login-password" required value="password123">
+            <input type="password" id="login-password" required placeholder="••••••••">
             <button type="submit" id="login-btn">Sign In</button>
+            <p style="margin-top: 15px; font-size: 12px; color: #6b7280; text-align: center;">
+                Default Admin: admin@lms.internal / password123<br>
+                (Maaari ka ring magdagdag ng Officer accounts sa Settings/Permissions kung naka-admin ka na)
+            </p>
         </form>
     </div>
 
+    <!-- APP DASHBOARD VIEW -->
     <div id="app-view" class="app-layout" style="display:none;">
         <aside class="sidebar">
-            <h2>LMS Administrator</h2>
-            <nav>
-                <button class="nav-btn active" data-tab="dashboard">Dashboard</button>
-                <button class="nav-btn" data-tab="centers">Centers</button>
-                <button class="nav-btn" data-tab="barangays">Barangays</button>
-                <button class="nav-btn" data-tab="officers">Officers</button>
-                <button class="nav-btn" data-tab="clients">Clients</button>
-                <button class="nav-btn" data-tab="loans">Loans / Financing</button>
-                <button class="nav-btn" data-tab="transactions">Transactions</button>
-                <button class="nav-btn" data-tab="audit">Audit Logs</button>
+            <h2 id="sidebar-title">LMS System</h2>
+            <nav id="sidebar-nav">
+                <!-- Dynamic Nav Buttons based on Role -->
             </nav>
             <button id="logout-btn" class="logout-btn">Logout</button>
         </aside>
@@ -38,62 +37,84 @@
         <main class="main-content">
             <div id="alert-box" class="alert" style="display:none;"></div>
 
+            <!-- DASHBOARD TAB -->
             <section id="tab-dashboard" class="tab-content">
-                <h1>Main Dashboard</h1>
-                <div class="metrics-grid">
-                    <div class="card"><p>Total Centers</p><h3 id="m-centers">0</h3></div>
-                    <div class="card"><p>Total Barangays</p><h3 id="m-barangays">0</h3></div>
-                    <div class="card"><p>Total Officers</p><h3 id="m-officers">0</h3></div>
-                    <div class="card"><p>Total Clients</p><h3 id="m-clients">0</h3></div>
-                    <div class="card"><p>Active Loans</p><h3 id="m-active-loans">0</h3></div>
-                    <div class="card"><p>Pending Applications</p><h3 id="m-pending">0</h3></div>
-                    <div class="card"><p>Overdue Loans</p><h3 id="m-overdue">0</h3></div>
-                    <div class="card"><p>Outstanding Balance</p><h3 id="m-balance">₱ 0</h3></div>
+                <h1 id="dash-title">Main Dashboard</h1>
+                <p id="dash-subtitle" style="color: #6b7280; margin-bottom: 20px;"></p>
+                
+                <div class="metrics-grid" id="metrics-container">
+                    <!-- Dynamic Metrics -->
                 </div>
-                <div class="actions-box">
+
+                <div class="actions-box" id="quick-actions-box">
                     <h3>Quick Actions</h3>
-                    <div class="action-buttons">
-                        <button onclick="openModal('center')">+ ADD CENTER</button>
-                        <button onclick="openModal('barangay')">+ ADD BARANGAY</button>
-                        <button onclick="openModal('officer')">+ ADD OFFICER</button>
-                        <button onclick="openModal('client')">+ ADD CLIENT</button>
-                        <button onclick="openModal('loan')" class="btn-green">+ NEW LOAN</button>
-                        <button onclick="openModal('payment')" class="btn-green">RECORD PAYMENT</button>
+                    <div class="action-buttons" id="action-buttons-container">
+                        <!-- Dynamic Actions -->
                     </div>
                 </div>
             </section>
 
+            <!-- GENERIC MANAGEMENT TABS -->
             <section id="tab-centers" class="tab-content" style="display:none;">
-                <div class="section-header"><h1>Centers</h1><button onclick="openModal('center')">+ Add Center</button></div>
+                <div class="section-header"><h1>Centers</h1><button id="btn-add-center" onclick="openModal('center')">+ Add Center</button></div>
                 <div id="table-centers" class="table-responsive"></div>
             </section>
+
             <section id="tab-barangays" class="tab-content" style="display:none;">
-                <div class="section-header"><h1>Barangays</h1><button onclick="openModal('barangay')">+ Add Barangay</button></div>
+                <div class="section-header"><h1>Barangays</h1><button id="btn-add-barangay" onclick="openModal('barangay')">+ Add Barangay</button></div>
                 <div id="table-barangays" class="table-responsive"></div>
             </section>
+
             <section id="tab-officers" class="tab-content" style="display:none;">
                 <div class="section-header"><h1>Officers</h1><button onclick="openModal('officer')">+ Add Officer</button></div>
                 <div id="table-officers" class="table-responsive"></div>
             </section>
+
             <section id="tab-clients" class="tab-content" style="display:none;">
                 <div class="section-header"><h1>Clients</h1><button onclick="openModal('client')">+ Add Client</button></div>
                 <div id="table-clients" class="table-responsive"></div>
             </section>
+
             <section id="tab-loans" class="tab-content" style="display:none;">
-                <div class="section-header"><h1>Loans</h1><button onclick="openModal('loan')">+ New Loan</button></div>
+                <div class="section-header"><h1>Loans / Financing</h1><button onclick="openModal('loan')">+ New Loan</button></div>
                 <div id="table-loans" class="table-responsive"></div>
             </section>
+
+            <section id="tab-payments" class="tab-content" style="display:none;">
+                <div class="section-header"><h1>Payments</h1><button onclick="openModal('payment')">Record Payment</button></div>
+                <div id="table-payments" class="table-responsive"></div>
+            </section>
+
+            <section id="tab-savings" class="tab-content" style="display:none;">
+                <div class="section-header"><h1>Savings</h1><div><button onclick="openModal('deposit')">+ Deposit</button> <button onclick="openModal('withdraw')" style="background:#ef4444;">Withdraw</button></div></div>
+                <div id="table-savings" class="table-responsive"></div>
+            </section>
+
             <section id="tab-transactions" class="tab-content" style="display:none;">
                 <div class="section-header"><h1>Transactions</h1></div>
                 <div id="table-transactions" class="table-responsive"></div>
             </section>
+
+            <section id="tab-reports" class="tab-content" style="display:none;">
+                <div class="section-header"><h1>Reports</h1></div>
+                <div id="table-reports" class="table-responsive"><p style="padding:20px;">Report generation ready for assigned scope.</p></div>
+            </section>
+
             <section id="tab-audit" class="tab-content" style="display:none;">
                 <div class="section-header"><h1>Audit Logs</h1></div>
                 <div id="table-audit" class="table-responsive"></div>
             </section>
+
+            <section id="tab-settings" class="tab-content" style="display:none;">
+                <div class="section-header"><h1>System Settings & Permissions</h1></div>
+                <div id="table-settings" class="table-responsive" style="padding: 20px;">
+                    <p>Konpigurasyon ng sistema at panuntunan ng LocalStorage.</p>
+                </div>
+            </section>
         </main>
     </div>
 
+    <!-- UNIVERSAL MODAL -->
     <div id="modal-overlay" class="modal-overlay" style="display:none;">
         <div class="modal-box">
             <h3 id="modal-title">Form</h3>
